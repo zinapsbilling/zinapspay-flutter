@@ -18,12 +18,31 @@ class DashboardLayout extends StatefulWidget {
   State<DashboardLayout> createState() => _DashboardLayoutState();
 }
 
-class _DashboardLayoutState extends State<DashboardLayout> {
-  bool _isSidebarCollapsed = true;
+class _DashboardLayoutState extends State<DashboardLayout> with TickerProviderStateMixin {
   bool _isMobileMenuOpen = false;
 
-  static const double _collapsedWidth = 80;
-  static const double _expandedWidth = 280;
+  // Animation controllers for floating orbs
+  late AnimationController _floatController;
+  late Animation<double> _floatAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    // Float animation: 8s ease-in-out infinite per specification
+    _floatController = AnimationController(
+      duration: const Duration(milliseconds: 8000),
+      vsync: this,
+    )..repeat(reverse: true);
+    _floatAnimation = Tween<double>(begin: 0, end: -25).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _floatController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,9 +65,6 @@ class _DashboardLayoutState extends State<DashboardLayout> {
                 if (!isMobile)
                   SidebarNav(
                     currentPath: widget.currentPath,
-                    onCollapsedChanged: (collapsed) {
-                      setState(() => _isSidebarCollapsed = collapsed);
-                    },
                   ),
                 // Main content area
                 Expanded(
@@ -79,9 +95,6 @@ class _DashboardLayoutState extends State<DashboardLayout> {
                 bottom: 0,
                 child: SidebarNav(
                   currentPath: widget.currentPath,
-                  onCollapsedChanged: (collapsed) {
-                    setState(() => _isSidebarCollapsed = collapsed);
-                  },
                 ),
               ),
             ],
@@ -93,28 +106,51 @@ class _DashboardLayoutState extends State<DashboardLayout> {
 
   Widget _buildFloatingOrbs(BuildContext context) {
     return IgnorePointer(
-      child: Stack(
-        children: [
-          Positioned(top: 80, left: 40, child: _orb(128, 0.05)),
-          Positioned(top: 160, right: 80, child: _orb(96, 0.05)),
-          Positioned(
-            bottom: 128,
-            left: MediaQuery.of(context).size.width * 0.25,
-            child: _orb(160, 0.03),
-          ),
-        ],
+      child: AnimatedBuilder(
+        animation: _floatAnimation,
+        builder: (context, child) {
+          return Stack(
+            children: [
+              // Orb 1: no delay
+              Positioned(
+                top: 80 + _floatAnimation.value,
+                left: 40,
+                child: _orb(128, 0.6),
+              ),
+              // Orb 2: animation-delay: -2s (offset the animation)
+              Positioned(
+                top: 160 + (_floatAnimation.value * 0.75),
+                right: 80,
+                child: _orb(96, 0.6),
+              ),
+              // Orb 3: animation-delay: -4s (offset the animation)
+              Positioned(
+                bottom: 128 + (_floatAnimation.value * 0.5),
+                left: MediaQuery.of(context).size.width * 0.25,
+                child: _orb(160, 0.6),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _orb(double size, double opacity) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [Colors.white.withOpacity(opacity), Colors.transparent],
+    // Spec: filter: blur(40px); opacity: 0.6
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              Colors.white.withOpacity(opacity * 0.15), // Subtle glow
+              Colors.transparent,
+            ],
+          ),
         ),
       ),
     );

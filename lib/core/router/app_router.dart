@@ -78,7 +78,8 @@ class AppRoutes {
 /// Router provider
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: AppRoutes.login,
+    // TODO: Change back to AppRoutes.login for production
+    initialLocation: AppRoutes.dashboard,
     debugLogDiagnostics: true,
     routes: [
       // Auth routes (no sidebar)

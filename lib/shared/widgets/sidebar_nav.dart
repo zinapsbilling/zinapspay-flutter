@@ -116,14 +116,17 @@ class SidebarNav extends StatefulWidget {
 
 class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateMixin {
   bool _isCollapsed = true;
+  bool _showExpandedContent = false; // Delayed state for content rendering
   final Set<String> _expandedItems = {};
   String? _hoveredDropdown;
+  String? _hoveredItem; // Track which item is being hovered for tooltip
   final TextEditingController _searchController = TextEditingController();
   String _searchTerm = '';
 
-  // Sidebar widths matching Next.js
-  static const double _collapsedWidth = 80;
-  static const double _expandedWidth = 280;
+  // Sidebar widths matching Next.js - EXACT per specification
+  static const double _collapsedWidth = 80;   // Collapsed: 80px
+  static const double _expandedWidth = 320;   // Expanded: 320px
+  static const Duration _animationDuration = Duration(milliseconds: 300);
 
   @override
   void initState() {
@@ -146,6 +149,20 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
   void _toggleCollapse() {
     setState(() {
       _isCollapsed = !_isCollapsed;
+      // When collapsing: immediately hide expanded content
+      // When expanding: delay showing expanded content until animation completes
+      if (_isCollapsed) {
+        _showExpandedContent = false;
+      } else {
+        // Delay expanded content until width animation is done
+        Future.delayed(_animationDuration, () {
+          if (mounted && !_isCollapsed) {
+            setState(() {
+              _showExpandedContent = true;
+            });
+          }
+        });
+      }
     });
     widget.onCollapsedChanged?.call(_isCollapsed);
   }
@@ -174,34 +191,48 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final width = _isCollapsed ? _collapsedWidth : _expandedWidth;
 
+    // The key insight from Next.js:
+    // - Width animates with CSS transition (300ms)
+    // - Content is conditionally rendered with {!isCollapsed && ...}
+    // - overflow: hidden clips content during animation
+    //
+    // In Flutter, we use:
+    // - AnimatedContainer for width animation
+    // - OverflowBox to allow content to be larger than the animated width
+    // - ClipRect to clip the overflowing content
+    // - _isCollapsed for conditional content rendering
+
+    // Match Next.js behavior: conditionally render text, not clip it
+    // Icons are centered when collapsed, full layout when expanded
+    // Use _showExpandedContent (delayed) instead of !_isCollapsed to prevent overflow during animation
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: _animationDuration,
       curve: Curves.easeInOut,
       width: width,
-      child: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF0A0A0A), Color(0xFF0F0F0F)],
-              ),
-              border: Border(
-                right: BorderSide(color: Colors.white.withOpacity(0.1)),
-              ),
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0A0A0A), Color(0xFF0F0F0F)],
             ),
-            child: Column(
-              children: [
-                _buildHeader(),
-                _buildAISection(),
-                if (!_isCollapsed) _buildSearchBar(),
-                Expanded(child: _buildNavigation()),
-                _buildUserProfile(),
-                _buildSignOutButton(),
-              ],
+            border: Border(
+              right: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
+          ),
+          child: Column(
+            children: [
+              _buildHeader(),
+              _buildAISection(),
+              if (_showExpandedContent) _buildSearchBar(),
+              Expanded(child: _buildNavigation()),
+              _buildUserProfile(),
+              _buildSignOutButton(),
+            ],
           ),
         ),
       ),
@@ -209,31 +240,33 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
   }
 
   Widget _buildHeader() {
+    // Next.js approach: conditionally show text, center icon when collapsed
+    // Use !_showExpandedContent to delay Row rendering until animation is done
     return Container(
-      padding: EdgeInsets.all(_isCollapsed ? 16 : 24),
+      padding: EdgeInsets.all(_showExpandedContent ? 24 : 16),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
-      child: Column(
-        children: [
-          if (_isCollapsed) ...[
-            // Collapsed: Logo icon
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.white.withOpacity(0.05),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: const Icon(Icons.receipt_long, color: Colors.white, size: 24),
-            ),
-            const SizedBox(height: 12),
-            // Collapse toggle button
-            _buildCollapseButton(),
-          ] else ...[
-            // Expanded: Full header
-            Row(
+      child: !_showExpandedContent
+          // Collapsed: centered icon + collapse button vertically
+          ? Column(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white.withOpacity(0.05),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: const Icon(Icons.receipt_long, color: Colors.white, size: 24),
+                ),
+                const SizedBox(height: 12),
+                _buildCollapseButton(),
+              ],
+            )
+          // Expanded: full row with icon, text, and collapse button
+          : Row(
               children: [
                 Container(
                   width: 40,
@@ -276,9 +309,6 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
                 _buildCollapseButton(),
               ],
             ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -293,7 +323,7 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
 
   Widget _buildAISection() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: _isCollapsed ? 8 : 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: _showExpandedContent ? 16 : 8, vertical: 8),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
@@ -340,7 +370,7 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
     }).toList();
 
     return ListView(
-      padding: EdgeInsets.symmetric(horizontal: _isCollapsed ? 8 : 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: _showExpandedContent ? 16 : 8, vertical: 8),
       children: filteredItems.map((item) => _buildNavItem(item)).toList(),
     );
   }
@@ -354,15 +384,23 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
       children: [
         MouseRegion(
           onEnter: (_) {
-            if (_isCollapsed && hasSubmenu) {
-              setState(() => _hoveredDropdown = item.name);
+            if (_isCollapsed) {
+              setState(() {
+                _hoveredItem = item.name;
+                if (hasSubmenu) {
+                  _hoveredDropdown = item.name;
+                }
+              });
             }
           },
           onExit: (_) {
             if (_isCollapsed) {
               Future.delayed(const Duration(milliseconds: 200), () {
-                if (mounted && _hoveredDropdown == item.name) {
-                  setState(() => _hoveredDropdown = null);
+                if (mounted) {
+                  setState(() {
+                    if (_hoveredItem == item.name) _hoveredItem = null;
+                    if (_hoveredDropdown == item.name) _hoveredDropdown = null;
+                  });
                 }
               });
             }
@@ -387,56 +425,67 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
                     }
                   },
                   borderRadius: BorderRadius.circular(8),
+                  // Next.js approach: conditionally show text
+                  // Use !_showExpandedContent to delay Row rendering until animation is done
                   child: Container(
-                    padding: EdgeInsets.all(_isCollapsed ? 12 : 12),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       color: isActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
                     ),
-                    child: Row(
-                      mainAxisAlignment: _isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-                      children: [
-                        Icon(
-                          item.icon,
-                          size: 20,
-                          color: isActive ? Colors.white : Colors.white.withOpacity(0.6),
-                        ),
-                        if (!_isCollapsed) ...[
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              item.name,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                                color: isActive ? Colors.white : Colors.white.withOpacity(0.8),
-                              ),
+                    child: !_showExpandedContent
+                        // Collapsed: just centered icon
+                        ? Center(
+                            child: Icon(
+                              item.icon,
+                              size: 20,
+                              color: isActive ? Colors.white : Colors.white.withOpacity(0.6),
                             ),
+                          )
+                        // Expanded: icon + text + arrow
+                        : Row(
+                            children: [
+                              Icon(
+                                item.icon,
+                                size: 20,
+                                color: isActive ? Colors.white : Colors.white.withOpacity(0.6),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  item.name,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                                    color: isActive ? Colors.white : Colors.white.withOpacity(0.8),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (hasSubmenu)
+                                AnimatedRotation(
+                                  turns: isExpanded ? 0.5 : 0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: Icon(
+                                    Icons.keyboard_arrow_down,
+                                    size: 18,
+                                    color: Colors.white.withOpacity(0.5),
+                                  ),
+                                ),
+                            ],
                           ),
-                          if (hasSubmenu)
-                            AnimatedRotation(
-                              turns: isExpanded ? 0.5 : 0,
-                              duration: const Duration(milliseconds: 200),
-                              child: Icon(
-                                Icons.keyboard_arrow_down,
-                                size: 18,
-                                color: Colors.white.withOpacity(0.5),
-                              ),
-                            ),
-                        ],
-                      ],
-                    ),
                   ),
                 ),
               ),
-              // Collapsed tooltip
-              if (_isCollapsed && _hoveredDropdown != item.name)
+              // Collapsed tooltip - only show on hover for items WITHOUT submenu
+              // Items with submenu show dropdown instead
+              if (_isCollapsed && !hasSubmenu && _hoveredItem == item.name)
                 Positioned(
                   left: 60,
                   top: 8,
                   child: _buildTooltip(item.name),
                 ),
-              // Collapsed dropdown menu
+              // Collapsed dropdown menu for items WITH submenu
               if (_isCollapsed && hasSubmenu && _hoveredDropdown == item.name)
                 Positioned(
                   left: 70,
@@ -447,7 +496,7 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
           ),
         ),
         // Expanded submenu
-        if (!_isCollapsed && hasSubmenu && isExpanded)
+        if (_showExpandedContent && hasSubmenu && isExpanded)
           _buildSubmenu(item.subItems!),
         const SizedBox(height: 4),
       ],
@@ -546,12 +595,15 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
                           color: isSubActive ? Colors.white : Colors.white.withOpacity(0.6),
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          subItem.name,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isSubActive ? FontWeight.w600 : FontWeight.w400,
-                            color: isSubActive ? Colors.white : Colors.white.withOpacity(0.8),
+                        Expanded(
+                          child: Text(
+                            subItem.name,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSubActive ? FontWeight.w600 : FontWeight.w400,
+                              color: isSubActive ? Colors.white : Colors.white.withOpacity(0.8),
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -595,11 +647,14 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
                         color: isSubActive ? Colors.white : Colors.white.withOpacity(0.5),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        subItem.name,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isSubActive ? Colors.white : Colors.white.withOpacity(0.6),
+                      Expanded(
+                        child: Text(
+                          subItem.name,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isSubActive ? Colors.white : Colors.white.withOpacity(0.6),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -615,79 +670,102 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
 
   Widget _buildUserProfile() {
     return Container(
-      padding: EdgeInsets.all(_isCollapsed ? 8 : 16),
+      padding: EdgeInsets.all(_showExpandedContent ? 16 : 8),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
       child: Container(
-        padding: EdgeInsets.all(_isCollapsed ? 8 : 12),
+        padding: EdgeInsets.all(_showExpandedContent ? 12 : 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: Colors.white.withOpacity(0.05),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
-        child: Row(
-          mainAxisAlignment: _isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-          children: [
-            Container(
-              width: _isCollapsed ? 32 : 40,
-              height: _isCollapsed ? 32 : 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
-              ),
-              child: Center(
-                child: Text(
-                  'JS',
-                  style: TextStyle(
-                    fontSize: _isCollapsed ? 10 : 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withOpacity(0.8),
+        // Next.js approach: conditionally show text
+        // Use !_showExpandedContent to delay Row rendering until animation is done
+        child: !_showExpandedContent
+            // Collapsed: just centered avatar
+            ? Center(
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.1),
+                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'JS',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            if (!_isCollapsed) ...[
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'John Smith',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+              )
+            // Expanded: avatar + name + settings button
+            : Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.1),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'JS',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
                       ),
                     ),
-                    Text(
-                      'Administrator',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.5),
-                      ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'John Smith',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'Administrator',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  IconButton(
+                    onPressed: () => context.go('/settings'),
+                    icon: Icon(Icons.settings, size: 18, color: Colors.white.withOpacity(0.6)),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
               ),
-              IconButton(
-                onPressed: () => context.go('/settings'),
-                icon: Icon(Icons.settings, size: 18, color: Colors.white.withOpacity(0.6)),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildSignOutButton() {
     return Padding(
-      padding: EdgeInsets.all(_isCollapsed ? 8 : 16).copyWith(top: 0),
+      padding: EdgeInsets.all(_showExpandedContent ? 16 : 8).copyWith(top: 0),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -697,33 +775,44 @@ class _SidebarNavState extends State<SidebarNav> with SingleTickerProviderStateM
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: EdgeInsets.all(_isCollapsed ? 12 : 12),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               color: Colors.white.withOpacity(0.05),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            child: Row(
-              mainAxisAlignment: _isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.logout,
-                  size: 20,
-                  color: Colors.white.withOpacity(0.6),
-                ),
-                if (!_isCollapsed) ...[
-                  const SizedBox(width: 12),
-                  Text(
-                    'Sign Out',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+            // Conditional rendering like Next.js approach
+            // Use !_showExpandedContent to delay Row rendering until animation is done
+            child: !_showExpandedContent
+                // Collapsed: just centered icon
+                ? Center(
+                    child: Icon(
+                      Icons.logout,
+                      size: 20,
                       color: Colors.white.withOpacity(0.6),
                     ),
+                  )
+                // Expanded: icon + text
+                : Row(
+                    children: [
+                      Icon(
+                        Icons.logout,
+                        size: 20,
+                        color: Colors.white.withOpacity(0.6),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Sign Out',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.6),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ],
-            ),
           ),
         ),
       ),

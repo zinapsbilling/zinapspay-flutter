@@ -82,19 +82,44 @@ class DashboardScreen extends ConsumerWidget {
     // Next.js: gap-3 sm:gap-4 lg:gap-6 (12px, 16px, 24px)
     final gap = isDesktop ? 24.0 : (isTablet ? 16.0 : 12.0);
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: isDesktop ? 4 : 2,
-        crossAxisSpacing: gap,
-        mainAxisSpacing: gap,
-        // Next.js cards are wide and short - ratio ~3:1 (width:height)
-        childAspectRatio: isDesktop ? 2.5 : 1.75,
-      ),
-      itemCount: stats.length,
-      itemBuilder: (context, index) => _InteractiveStatCard(stat: stats[index], isDesktop: isDesktop, isTablet: isTablet),
-    );
+    // Match Next.js: grid grid-cols-2 lg:grid-cols-4
+    // Cards grow to fit content naturally - no fixed aspect ratio
+    if (isDesktop) {
+      // Desktop: 4 columns in a row
+      return Row(
+        children: stats.asMap().entries.map((entry) {
+          final index = entry.key;
+          final stat = entry.value;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: index < stats.length - 1 ? gap : 0),
+              // First card has pulse-glow effect like Next.js
+              child: _InteractiveStatCard(stat: stat, isDesktop: isDesktop, isTablet: isTablet, hasPulseGlow: index == 0),
+            ),
+          );
+        }).toList(),
+      );
+    } else {
+      // Mobile/Tablet: 2 columns using LayoutBuilder to get available width
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final cardWidth = (constraints.maxWidth - gap) / 2;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: stats.asMap().entries.map((entry) {
+              final index = entry.key;
+              final stat = entry.value;
+              return SizedBox(
+                width: cardWidth,
+                // First card has pulse-glow effect like Next.js
+                child: _InteractiveStatCard(stat: stat, isDesktop: isDesktop, isTablet: isTablet, hasPulseGlow: index == 0),
+              );
+            }).toList(),
+          );
+        },
+      );
+    }
   }
 
   Widget _buildBottomSection(bool isDesktop, bool isTablet) {
@@ -176,15 +201,20 @@ class DashboardScreen extends ConsumerWidget {
         ),
         SizedBox(height: isDesktop ? 24 : 16),
         // Next.js: grid grid-cols-2 gap-3 lg:gap-4
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: isDesktop ? 16 : 12,
-          mainAxisSpacing: isDesktop ? 16 : 12,
-          // Next.js buttons are wide rectangles, not squares - much higher ratio
-          childAspectRatio: isDesktop ? 3.2 : 2.5,
-          children: actions.map((action) => _ActionButton(action: action, isDesktop: isDesktop, isTablet: isTablet)).toList(),
+        // Use Wrap to let buttons grow naturally to fit content
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final gap = isDesktop ? 16.0 : 12.0;
+            final buttonWidth = (constraints.maxWidth - gap) / 2;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: actions.map((action) => SizedBox(
+                width: buttonWidth,
+                child: _ActionButton(action: action, isDesktop: isDesktop, isTablet: isTablet),
+              )).toList(),
+            );
+          },
         ),
       ],
     );
@@ -197,11 +227,13 @@ class _InteractiveStatCard extends StatefulWidget {
   final Map<String, dynamic> stat;
   final bool isDesktop;
   final bool isTablet;
+  final bool hasPulseGlow;
 
   const _InteractiveStatCard({
     required this.stat,
     required this.isDesktop,
     required this.isTablet,
+    this.hasPulseGlow = false,
   });
 
   @override
@@ -209,14 +241,19 @@ class _InteractiveStatCard extends StatefulWidget {
 }
 
 class _InteractiveStatCardState extends State<_InteractiveStatCard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   bool _isHovered = false;
   late AnimationController _shineController;
   late Animation<double> _shineAnimation;
 
+  // Pulse glow animation - Next.js: animation: pulse-glow 3s ease-in-out infinite
+  late AnimationController _pulseGlowController;
+  late Animation<double> _pulseGlowAnimation;
+
   @override
   void initState() {
     super.initState();
+    // Shine effect on hover
     _shineController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -224,11 +261,26 @@ class _InteractiveStatCardState extends State<_InteractiveStatCard>
     _shineAnimation = Tween<double>(begin: -1.0, end: 2.0).animate(
       CurvedAnimation(parent: _shineController, curve: Curves.easeInOut),
     );
+
+    // Pulse glow effect - continuous 3s animation
+    _pulseGlowController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    );
+    _pulseGlowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseGlowController, curve: Curves.easeInOut),
+    );
+
+    // Start pulse glow if enabled
+    if (widget.hasPulseGlow) {
+      _pulseGlowController.repeat(reverse: true);
+    }
   }
 
   @override
   void dispose() {
     _shineController.dispose();
+    _pulseGlowController.dispose();
     super.dispose();
   }
 
@@ -249,36 +301,75 @@ class _InteractiveStatCardState extends State<_InteractiveStatCard>
     return MouseRegion(
       onEnter: (_) => _onHover(true),
       onExit: (_) => _onHover(false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-        transform: Matrix4.identity()
-          ..translate(0.0, _isHovered ? -5.0 : 0.0)
-          ..scale(_isHovered ? 1.03 : 1.0),
-        transformAlignment: Alignment.center,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(borderRadius),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(borderRadius),
-                // Pure black - exact #000000
-                color: const Color(0xFF000000),
-                border: Border.all(
-                  color: Colors.white.withOpacity(_isHovered ? 0.15 : 0.08),
-                  width: 1,
+      // Wrap with AnimatedBuilder to listen to pulse glow animation
+      child: AnimatedBuilder(
+        animation: _pulseGlowAnimation,
+        builder: (context, child) {
+          // Calculate pulse glow values based on animation
+          // Next.js: 0% -> box-shadow: 0 0 20px rgba(255,255,255,0.1)
+          //          50% -> box-shadow: 0 0 40px rgba(255,255,255,0.2)
+          final glowBlur = widget.hasPulseGlow
+              ? 20.0 + (_pulseGlowAnimation.value * 20.0)  // 20px -> 40px
+              : 0.0;
+          final glowOpacity = widget.hasPulseGlow
+              ? 0.1 + (_pulseGlowAnimation.value * 0.1)    // 0.1 -> 0.2
+              : 0.0;
+
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            transform: Matrix4.identity()
+              ..translate(0.0, _isHovered ? -5.0 : 0.0)
+              ..scale(_isHovered ? 1.03 : 1.0),
+            transformAlignment: Alignment.center,
+            // Put shadows on outer container so they're not clipped
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(borderRadius),
+              boxShadow: [
+                // shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.8)
+                const BoxShadow(
+                  color: Color.fromRGBO(0, 0, 0, 0.8),
+                  offset: Offset(0, 20),
+                  blurRadius: 40,
                 ),
-              ),
+                // Pulse glow effect - white glow around the card
+                if (widget.hasPulseGlow)
+                  BoxShadow(
+                    color: Colors.white.withOpacity(glowOpacity),
+                    blurRadius: glowBlur,
+                    spreadRadius: 0,
+                  ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(borderRadius),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(borderRadius),
+                    // Card gradient per specification: linear-gradient(135deg, #000000 0%, #1a1a1a 100%)
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF000000), Color(0xFF1A1A1A)],
+                    ),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(_isHovered ? 0.15 : 0.1),
+                      width: 1,
+                    ),
+                  ),
               child: Stack(
                 children: [
-                  // Main content
+                  // Main content - matches Next.js layout exactly
+                  // Content flows naturally top to bottom, no forced height
                   Padding(
                     padding: EdgeInsets.all(padding),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min, // Let card grow to fit content
                       children: [
+                        // Next.js: flex items-center justify-between mb-3 lg:mb-4
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -287,7 +378,7 @@ class _InteractiveStatCardState extends State<_InteractiveStatCard>
                               height: iconSize,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.05),
+                                color: Colors.white.withOpacity(0.1),
                               ),
                               child: Icon(widget.stat['icon'] as IconData, color: Colors.white.withOpacity(0.9), size: iconSize * 0.45),
                             ),
@@ -301,27 +392,26 @@ class _InteractiveStatCardState extends State<_InteractiveStatCard>
                             ),
                           ],
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.stat['value'] as String,
-                              style: TextStyle(
-                                fontSize: widget.isDesktop ? 32 : (widget.isTablet ? 26 : 22),
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            SizedBox(height: widget.isDesktop ? 4 : 2),
-                            Text(
-                              widget.stat['title'] as String,
-                              style: TextStyle(
-                                fontSize: widget.isDesktop ? 14 : 12,
-                                color: Colors.white.withOpacity(0.5),
-                              ),
-                            ),
-                          ],
+                        // Next.js: mb-3 lg:mb-4 (12px, 16px)
+                        SizedBox(height: widget.isDesktop ? 16 : 12),
+                        // Next.js: text-xl sm:text-2xl lg:text-3xl font-bold mb-1 lg:mb-2
+                        Text(
+                          widget.stat['value'] as String,
+                          style: TextStyle(
+                            fontSize: widget.isDesktop ? 32 : (widget.isTablet ? 26 : 22),
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        SizedBox(height: widget.isDesktop ? 8 : 4),
+                        // Next.js: text-secondary text-sm lg:text-base
+                        Text(
+                          widget.stat['title'] as String,
+                          style: TextStyle(
+                            fontSize: widget.isDesktop ? 16 : 14,
+                            color: Colors.white.withOpacity(0.6),
+                          ),
                         ),
                       ],
                     ),
@@ -356,8 +446,10 @@ class _InteractiveStatCardState extends State<_InteractiveStatCard>
             ),
           ),
         ),
-      ),
-    );
+        );  // Close AnimatedContainer
+      },  // Close AnimatedBuilder builder
+    ),  // Close AnimatedBuilder (pulse glow)
+    );  // Close MouseRegion
   }
 }
 
@@ -433,12 +525,24 @@ class _InteractiveCardState extends State<_InteractiveCard>
               padding: EdgeInsets.all(padding),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(borderRadius),
-                // Pure black - exact #000000
-                color: const Color(0xFF000000),
+                // Card gradient per specification: linear-gradient(135deg, #000000 0%, #1a1a1a 100%)
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF000000), Color(0xFF1A1A1A)],
+                ),
                 border: Border.all(
-                  color: Colors.white.withOpacity(_isHovered ? 0.15 : 0.08),
+                  color: Colors.white.withOpacity(_isHovered ? 0.15 : 0.1),
                   width: 1,
                 ),
+                boxShadow: [
+                  // shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.8)
+                  BoxShadow(
+                    color: const Color.fromRGBO(0, 0, 0, 0.8),
+                    offset: const Offset(0, 20),
+                    blurRadius: 40,
+                  ),
+                ],
               ),
               child: Stack(
                 children: [
@@ -507,16 +611,20 @@ class _InvoiceItemState extends State<_InvoiceItem> {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        // Next.js: p-3 lg:p-4 glass-effect rounded-lg
-        padding: EdgeInsets.all(widget.isDesktop ? 16 : 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          // Pure black with subtle border
-          color: const Color(0xFF000000),
-          border: Border.all(color: Colors.white.withOpacity(_isHovered ? 0.12 : 0.06)),
-        ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            // Next.js: p-3 lg:p-4 glass-effect rounded-lg
+            padding: EdgeInsets.all(widget.isDesktop ? 16 : 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              // Glass effect: rgba(255, 255, 255, 0.05)
+              color: Colors.white.withOpacity(0.05),
+              border: Border.all(color: Colors.white.withOpacity(_isHovered ? 0.15 : 0.1)),
+            ),
         child: Row(
           children: [
             // Icon container
@@ -567,8 +675,10 @@ class _InvoiceItemState extends State<_InvoiceItem> {
             ),
           ],
         ),
-      ),
-    );
+          ),  // Close AnimatedContainer
+        ),  // Close BackdropFilter
+      ),  // Close ClipRRect
+    );  // Close MouseRegion
   }
 }
 
@@ -638,36 +748,40 @@ class _ActionButtonState extends State<_ActionButton>
           transformAlignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            // Pure black with subtle border
-            color: const Color(0xFF000000),
-            border: Border.all(color: Colors.white.withOpacity(_isHovered ? 0.12 : 0.06)),
+            // Glass effect: bg-white/5 hover:bg-white/10
+            color: Colors.white.withOpacity(_isHovered ? 0.1 : 0.05),
+            border: Border.all(color: Colors.white.withOpacity(_isHovered ? 0.15 : 0.1)),
           ),
           child: Stack(
             children: [
-              // Main content
-              Padding(
-                padding: EdgeInsets.all(padding),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Next.js: style={{ fontSize: '1.5rem' }} = 24px, mb-2 lg:mb-3
-                    Icon(
-                      widget.action['icon'] as IconData,
-                      color: Colors.white.withOpacity(0.9),
-                      size: 24,
-                    ),
-                    SizedBox(height: widget.isDesktop ? 12 : 8),
-                    // Next.js: text-xs sm:text-sm lg:text-base font-medium
-                    Text(
-                      widget.action['title'] as String,
-                      style: TextStyle(
-                        fontSize: widget.isDesktop ? 16 : (widget.isTablet ? 14 : 12),
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
+              // Main content - Next.js: text-center
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.all(padding),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Next.js: style={{ fontSize: '1.5rem' }} = 24px, mb-2 lg:mb-3
+                      Icon(
+                        widget.action['icon'] as IconData,
+                        color: Colors.white.withOpacity(0.9),
+                        size: 24,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                      SizedBox(height: widget.isDesktop ? 12 : 8),
+                      // Next.js: text-xs sm:text-sm lg:text-base font-medium
+                      Text(
+                        widget.action['title'] as String,
+                        style: TextStyle(
+                          fontSize: widget.isDesktop ? 16 : (widget.isTablet ? 14 : 12),
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               // Shine effect overlay
