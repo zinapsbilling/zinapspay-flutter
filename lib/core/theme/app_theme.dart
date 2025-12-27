@@ -42,7 +42,7 @@ class AppTheme {
       ),
 
       // Card Theme
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.card,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -239,13 +239,14 @@ class AppTheme {
       ),
 
       // Dialog Theme
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(
           borderRadius: AppSizes.borderRadiusXL,
         ),
         elevation: 24,
       ),
+// Popup Menu Theme (for Syncfusion filter popups)      popupMenuTheme: PopupMenuThemeData(        color: const Color(0xFF1A1A1A),        elevation: 8,        shape: RoundedRectangleBorder(          borderRadius: AppSizes.borderRadiusM,          side: BorderSide(color: Colors.white.withOpacity(0.1)),        ),        textStyle: const TextStyle(color: Colors.white),      ),      // Checkbox Theme (for filter checkboxes)      checkboxTheme: CheckboxThemeData(        fillColor: WidgetStateProperty.resolveWith((states) {          if (states.contains(WidgetState.selected)) {            return Colors.white;          }          return Colors.transparent;        }),        checkColor: WidgetStateProperty.all(const Color(0xFF1A1A1A)),        side: BorderSide(color: Colors.white.withOpacity(0.5)),        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),      ),      // List Tile Theme (for filter options)      listTileTheme: ListTileThemeData(        tileColor: Colors.transparent,        textColor: Colors.white,        iconColor: Colors.white.withOpacity(0.7),        selectedTileColor: Colors.white.withOpacity(0.1),        selectedColor: Colors.white,      ),
 
       // Bottom Sheet Theme
       bottomSheetTheme: const BottomSheetThemeData(
@@ -278,7 +279,7 @@ class AppTheme {
       ),
 
       // Tab Bar Theme
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         labelColor: AppColors.foreground,
         unselectedLabelColor: AppColors.mutedForeground,
         indicatorColor: AppColors.foreground,
@@ -345,7 +346,7 @@ class AppTheme {
       ),
 
       // Card Theme
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.lightCard,
         elevation: 0,
         shape: RoundedRectangleBorder(

@@ -6,6 +6,8 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/customers/presentation/screens/customers_screen.dart';
+import '../../features/shipments/presentation/screens/shipments_screen.dart';
 import '../../shared/widgets/dashboard_layout.dart';
 
 /// Route paths
@@ -143,6 +145,30 @@ final routerProvider = Provider<GoRouter>((ref) {
               },
             ),
           ),
+          // Customers
+          GoRoute(
+            path: AppRoutes.customers,
+            name: 'customers',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const CustomersScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
+          // Shipments
+          GoRoute(
+            path: AppRoutes.shipments,
+            name: 'shipments',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const ShipmentsScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
           // Placeholder routes for other screens (to be implemented)
           ..._buildPlaceholderRoutes(),
         ],
@@ -194,10 +220,10 @@ List<GoRoute> _buildPlaceholderRoutes() {
     AppRoutes.inbound,
     AppRoutes.outbound,
     AppRoutes.storage,
-    AppRoutes.shipments,
+    // AppRoutes.shipments, // Implemented
     AppRoutes.returns,
     AppRoutes.analytics,
-    AppRoutes.customers,
+    // AppRoutes.customers, // Implemented
     AppRoutes.pricing,
     AppRoutes.billing,
     AppRoutes.rules,
