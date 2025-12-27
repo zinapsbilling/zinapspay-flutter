@@ -8,6 +8,7 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/customers/presentation/screens/customers_screen.dart';
 import '../../features/shipments/presentation/screens/shipments_screen.dart';
+import '../../features/integrations/presentation/screens/integrations_screen.dart';
 import '../../shared/widgets/dashboard_layout.dart';
 
 /// Route paths
@@ -169,6 +170,18 @@ final routerProvider = Provider<GoRouter>((ref) {
               },
             ),
           ),
+          // Integrations
+          GoRoute(
+            path: AppRoutes.integrations,
+            name: 'integrations',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const IntegrationsScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
           // Placeholder routes for other screens (to be implemented)
           ..._buildPlaceholderRoutes(),
         ],
@@ -228,7 +241,7 @@ List<GoRoute> _buildPlaceholderRoutes() {
     AppRoutes.billing,
     AppRoutes.rules,
     AppRoutes.templates,
-    AppRoutes.integrations,
+    // AppRoutes.integrations, // Implemented
     AppRoutes.importStatus,
     AppRoutes.onboarding,
     AppRoutes.help,
