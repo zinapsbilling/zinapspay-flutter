@@ -58,26 +58,29 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Title section
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Shipments',
-              style: TextStyle(
-                fontSize: isDesktop ? 28 : 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Shipments',
+                style: TextStyle(
+                  fontSize: isDesktop ? 28 : 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Track shipments and delivery status - Monitor ${_shipments.length} active shipments across multiple carriers',
-              style: TextStyle(
-                fontSize: isDesktop ? 14 : 12,
-                color: Colors.white.withOpacity(0.6),
+              const SizedBox(height: 4),
+              Text(
+                'Track shipments and delivery status - Monitor ${_shipments.length} active shipments across multiple carriers',
+                style: TextStyle(
+                  fontSize: isDesktop ? 14 : 12,
+                  color: Colors.white.withOpacity(0.6),
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         // Action buttons
         if (isDesktop || isTablet) _buildActionButtons(isDesktop),
@@ -113,28 +116,27 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Drag a column header here to group its column',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.5),
+                Expanded(
+                  child: Text(
+                    'Drag a column header here to group its column',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Row(
-                  children: [
-                    _ToolbarButton(
-                      label: 'BulkUpdate',
-                      icon: Icons.add,
-                      onTap: () {},
-                    ),
-                    const SizedBox(width: 16),
-                    Icon(Icons.search, color: Colors.white.withOpacity(0.5), size: 20),
-                    const SizedBox(width: 12),
-                    Icon(Icons.more_vert, color: Colors.white.withOpacity(0.5), size: 20),
-                  ],
+                const SizedBox(width: 8),
+                _ToolbarButton(
+                  label: 'BulkUpdate',
+                  icon: Icons.add,
+                  onTap: () {},
                 ),
+                const SizedBox(width: 16),
+                Icon(Icons.search, color: Colors.white.withOpacity(0.5), size: 20),
+                const SizedBox(width: 12),
+                Icon(Icons.more_vert, color: Colors.white.withOpacity(0.5), size: 20),
               ],
             ),
           ),
@@ -201,7 +203,8 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
               ),
               child: SfDataGrid(
                 source: _shipmentDataSource,
-                columnWidthMode: ColumnWidthMode.fill,
+                columnWidthMode: ColumnWidthMode.none,
+                horizontalScrollPhysics: const ClampingScrollPhysics(),
                 gridLinesVisibility: GridLinesVisibility.horizontal,
                 headerGridLinesVisibility: GridLinesVisibility.horizontal,
                 allowSorting: true,
@@ -224,31 +227,37 @@ class _ShipmentsScreenState extends ConsumerState<ShipmentsScreen> {
                   // Shipment ID column
                   GridColumn(
                     columnName: 'shipmentId',
+                    minimumWidth: 120,
                     label: _buildColumnHeader('Shipment ID'),
                   ),
                   // Tracking # column
                   GridColumn(
                     columnName: 'trackingNumber',
+                    minimumWidth: 150,
                     label: _buildColumnHeader('Tracking #'),
                   ),
                   // Customer column
                   GridColumn(
                     columnName: 'customer',
+                    minimumWidth: 140,
                     label: _buildColumnHeader('Customer'),
                   ),
                   // Carrier column
                   GridColumn(
                     columnName: 'carrier',
+                    minimumWidth: 100,
                     label: _buildColumnHeader('Carrier'),
                   ),
                   // Status column
                   GridColumn(
                     columnName: 'status',
+                    minimumWidth: 120,
                     label: _buildColumnHeader('Status'),
                   ),
                   // Current Location column
                   GridColumn(
                     columnName: 'currentLocation',
+                    minimumWidth: 160,
                     label: _buildColumnHeader('Current Location'),
                   ),
                 ],

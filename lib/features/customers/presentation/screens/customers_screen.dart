@@ -59,26 +59,28 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Title section
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Customer Management',
-              style: TextStyle(
-                fontSize: isDesktop ? 28 : 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Customer Management',
+                style: TextStyle(
+                  fontSize: isDesktop ? 28 : 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Customer data analysis with DataGrid - ${_customers.length} customers loaded',
-              style: TextStyle(
-                fontSize: isDesktop ? 14 : 12,
-                color: Colors.white.withOpacity(0.6),
+              const SizedBox(height: 4),
+              Text(
+                'Customer data analysis with DataGrid - ${_customers.length} customers loaded',
+                style: TextStyle(
+                  fontSize: isDesktop ? 14 : 12,
+                  color: Colors.white.withOpacity(0.6),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         // Action buttons
         if (isDesktop || isTablet) _buildActionButtons(isDesktop),
@@ -136,17 +138,20 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (isDesktop) {
-          return Row(
-            children: stats.map((stat) {
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right: stats.indexOf(stat) < stats.length - 1 ? 16 : 0,
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: stats.map((stat) {
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: stats.indexOf(stat) < stats.length - 1 ? 16 : 0,
+                    ),
+                    child: _StatCard(stat: stat),
                   ),
-                  child: _StatCard(stat: stat),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+            ),
           );
         } else {
           return GridView.count(
@@ -155,7 +160,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1.8,
+            childAspectRatio: 1.5,
             children: stats.map((stat) => _StatCard(stat: stat)).toList(),
           );
         }
@@ -177,28 +182,27 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Drag a column header here to group its column',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.5),
+                Expanded(
+                  child: Text(
+                    'Drag a column header here to group its column',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Row(
-                  children: [
-                    _ToolbarButton(
-                      label: 'BulkUpdate',
-                      icon: Icons.add,
-                      onTap: () {},
-                    ),
-                    const SizedBox(width: 16),
-                    Icon(Icons.search, color: Colors.white.withOpacity(0.5), size: 20),
-                    const SizedBox(width: 12),
-                    Icon(Icons.more_vert, color: Colors.white.withOpacity(0.5), size: 20),
-                  ],
+                const SizedBox(width: 8),
+                _ToolbarButton(
+                  label: 'BulkUpdate',
+                  icon: Icons.add,
+                  onTap: () {},
                 ),
+                const SizedBox(width: 16),
+                Icon(Icons.search, color: Colors.white.withOpacity(0.5), size: 20),
+                const SizedBox(width: 12),
+                Icon(Icons.more_vert, color: Colors.white.withOpacity(0.5), size: 20),
               ],
             ),
           ),
@@ -288,26 +292,31 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                   // Customer column
                   GridColumn(
                     columnName: 'customer',
+                    minimumWidth: 120,
                     label: _buildColumnHeader('Customer'),
                   ),
                   // Seller ID column
                   GridColumn(
                     columnName: 'sellerId',
+                    minimumWidth: 100,
                     label: _buildColumnHeader('Seller ID'),
                   ),
                   // EAN column
                   GridColumn(
                     columnName: 'ean',
+                    minimumWidth: 140,
                     label: _buildColumnHeader('EAN'),
                   ),
                   // Package Type column
                   GridColumn(
                     columnName: 'packageType',
+                    minimumWidth: 120,
                     label: _buildColumnHeader('Package Type'),
                   ),
                   // Sub Seller column
                   GridColumn(
                     columnName: 'subSeller',
+                    minimumWidth: 120,
                     label: _buildColumnHeader('Sub Seller'),
                   ),
                 ],
@@ -323,25 +332,14 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       alignment: Alignment.centerLeft,
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-          if (showFilter) ...[
-            const Spacer(),
-            Icon(
-              Icons.filter_list,
-              size: 16,
-              color: Colors.white.withOpacity(0.4),
-            ),
-          ],
-        ],
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Colors.white.withOpacity(0.9),
+        ),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

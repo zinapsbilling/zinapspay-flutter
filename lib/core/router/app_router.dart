@@ -8,6 +8,12 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/customers/presentation/screens/customers_screen.dart';
 import '../../features/shipments/presentation/screens/shipments_screen.dart';
+import '../../features/returns/presentation/screens/returns_screen.dart';
+import '../../features/inbound/presentation/screens/inbound_screen.dart';
+import '../../features/outbound/presentation/screens/outbound_screen.dart';
+import '../../features/storage/presentation/screens/storage_screen.dart';
+import '../../features/pricing/presentation/screens/pricing_screen.dart';
+import '../../features/billing/presentation/screens/billing_screen.dart';
 import '../../shared/widgets/dashboard_layout.dart';
 
 /// Route paths
@@ -169,6 +175,78 @@ final routerProvider = Provider<GoRouter>((ref) {
               },
             ),
           ),
+          // Returns
+          GoRoute(
+            path: AppRoutes.returns,
+            name: 'returns',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const ReturnsScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
+          // Inbound
+          GoRoute(
+            path: AppRoutes.inbound,
+            name: 'inbound',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const InboundScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
+          // Outbound
+          GoRoute(
+            path: AppRoutes.outbound,
+            name: 'outbound',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const OutboundScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
+          // Storage
+          GoRoute(
+            path: AppRoutes.storage,
+            name: 'storage',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const StorageScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
+          // Pricing
+          GoRoute(
+            path: AppRoutes.pricing,
+            name: 'pricing',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const PricingScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
+          // Billing
+          GoRoute(
+            path: AppRoutes.billing,
+            name: 'billing',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const BillingScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          ),
           // Placeholder routes for other screens (to be implemented)
           ..._buildPlaceholderRoutes(),
         ],
@@ -217,15 +295,15 @@ List<GoRoute> _buildPlaceholderRoutes() {
     AppRoutes.zinapsaiTraining,
     AppRoutes.zinapsaiSearch,
     AppRoutes.inventory,
-    AppRoutes.inbound,
-    AppRoutes.outbound,
-    AppRoutes.storage,
+    // AppRoutes.inbound, // Implemented
+    // AppRoutes.outbound, // Implemented
+    // AppRoutes.storage, // Implemented
     // AppRoutes.shipments, // Implemented
-    AppRoutes.returns,
+    // AppRoutes.returns, // Implemented
     AppRoutes.analytics,
     // AppRoutes.customers, // Implemented
-    AppRoutes.pricing,
-    AppRoutes.billing,
+    // AppRoutes.pricing, // Implemented
+    // AppRoutes.billing, // Implemented
     AppRoutes.rules,
     AppRoutes.templates,
     AppRoutes.integrations,
